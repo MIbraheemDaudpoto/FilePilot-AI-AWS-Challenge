@@ -1,4 +1,3 @@
 # FilePilot AI — Lambda dependencies
-# Only what is needed. No FastAPI, no Mangum, no Uvicorn, no Pydantic.
-boto3>=1.34.0
+# boto3/botocore are provided by the Lambda runtime — do not bundle
 pypdf>=3.17.0
