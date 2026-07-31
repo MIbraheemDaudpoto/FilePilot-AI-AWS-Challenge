@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from app.schemas import AnalysisResult, ErrorResponse
 from app.file_handler import validate_file, process_file_content
-from app.bedrock_service import analyze_file_with_bedrock
+from app.bedrock_service import analyze_file, analyze_file as analyze_file_with_bedrock
 
 app = FastAPI(
     title="FilePilot AI Backend",
-    description="AWS Bedrock-powered API for intelligent file download organization",
+    description="Resilient AWS Bedrock-powered API for intelligent file download organization",
     version="1.0.0"
 )
 
@@ -20,6 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/", summary="Root Health Check")
+@app.get("/health", summary="Health Check")
+@app.get("/api/health", summary="API Health Check")
 @app.get("/api/v1/health", summary="Service Health Check")
 def health_check():
     return {
@@ -29,11 +32,29 @@ def health_check():
     }
 
 @app.post(
+    "/analyze",
+    response_model=List[AnalysisResult],
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid file type or size"},
+        500: {"model": ErrorResponse, "description": "Analysis processing failure"}
+    },
+    summary="Analyze files and return AI recommendations (Alias)"
+)
+@app.post(
+    "/api/analyze",
+    response_model=List[AnalysisResult],
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid file type or size"},
+        500: {"model": ErrorResponse, "description": "Analysis processing failure"}
+    },
+    summary="Analyze files and return AI recommendations (Alias)"
+)
+@app.post(
     "/api/v1/analyze",
     response_model=List[AnalysisResult],
     responses={
         400: {"model": ErrorResponse, "description": "Invalid file type or size"},
-        500: {"model": ErrorResponse, "description": "Amazon Bedrock API error or configuration failure"}
+        500: {"model": ErrorResponse, "description": "Analysis processing failure"}
     },
     summary="Analyze files and return AI recommendations"
 )
@@ -56,8 +77,8 @@ async def analyze_files(files: List[UploadFile] = File(...)):
         # Extract/process content
         processed = process_file_content(file.filename or "file", ext, content)
         
-        # Analyze with Amazon Bedrock
-        result = analyze_file_with_bedrock(file.filename or "file", processed)
+        # Analyze with Resilient Bedrock Provider & Fallback
+        result = analyze_file(file.filename or "file", processed)
         results.append(result)
         
     return results

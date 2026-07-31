@@ -2,196 +2,268 @@
 
 > **Turn messy downloads into organized files in seconds.**
 
-Built for the **AWS Builder Weekend Challenge**.
+Built for the **AWS Builder Weekend Challenge** — using Amazon Bedrock, AWS Lambda, Amazon API Gateway, and AWS Amplify.
 
 ---
 
-## 🌟 Overview
+## 🌟 What It Does
 
-**FilePilot AI** is a lightweight, AI-powered web application designed to reduce friction in managing downloaded files. Upload any unorganized file (Screenshot, PDF utility bill, text file), and Amazon Bedrock will analyze the content and instantly recommend:
+**FilePilot AI** is a lightweight, AI-powered web application that reduces the friction of managing downloaded files. Upload any unorganized file (screenshot, PDF utility bill, text file), and Amazon Bedrock analyzes the content and instantly recommends:
 
-1. **Descriptive Filename** (Preserving extension, under 6 words, underscores instead of spaces)
-2. **File Category** (e.g., Bills, Work, Personal, Development, University)
-3. **Suggested Target Folder** (e.g., `Documents/Bills`, `Projects/React`)
-4. **Short AI Reasoning** (One-sentence clear rationale)
-5. **AI Confidence Score** (Estimated confidence percentage)
-6. **Visual Folder Hierarchy Tree Preview** (Rendering organized filesystem paths)
-7. **Downloads Category Breakdown** (Aggregated counts by folder)
+| Output | Example |
+|---|---|
+| **Descriptive Filename** | `Electricity_Bill_July_2026.pdf` |
+| **File Category** | `Bills` |
+| **Suggested Folder** | `Documents/Bills` |
+| **AI Reasoning** | *"Document contains an electricity utility bill for July 2026."* |
+| **Confidence Score** | `94%` |
+| **Folder Tree Preview** | Visual hierarchy of where the file belongs |
 
 ---
 
 ## 📐 AWS Architecture
 
-```text
-            User
-              │
-              ▼
-      React + Tailwind (Frontend)
-       (Deployed on AWS Amplify)
-              │
-              ▼
-   Amazon API Gateway / FastAPI
-              │
-              ▼
- AWS Lambda (FastAPI + Mangum / Python 3.12)
-              │
-              ▼
-  Amazon Bedrock (Amazon Nova Lite / Nova Models)
-              │
-              ▼
-    Structured JSON Output
-              │
-              ▼
- Suggested Filename | Category | Folder | Reason | Confidence
+```
+                User
+                  │
+                  ▼
+        AWS Amplify (React + Vite)
+                  │  HTTPS
+                  ▼
+        Amazon API Gateway (HTTP API)
+                  │  ANY /{proxy+}
+                  ▼
+      AWS Lambda (FastAPI + Mangum)
+       Python 3.12 · lambda_function.handler
+                  │
+                  ▼
+    Amazon Bedrock (Amazon Nova Lite)
+      Multimodal · Text + Image analysis
+                  │
+                  ▼
+        Structured JSON Response
+                  │
+                  ▼
+            React UI Result Card
 ```
 
-### AWS Components Used:
-- **Amazon Bedrock**: Powering fast text & multimodal content analysis using Amazon Nova models (`us.amazon.nova-lite-v1:0` or `amazon.nova-lite-v1:0`).
-- **AWS Amplify**: Hosting the responsive React + TypeScript frontend with instant CI/CD deployment.
-- **AWS Lambda & Amazon API Gateway**: Serverless backend running FastAPI via the `Mangum` ASGI adapter.
+### AWS Services Used
+
+| Service | Role |
+|---|---|
+| **Amazon Bedrock** | AI analysis using Amazon Nova Lite (`us.amazon.nova-lite-v1:0`) — multimodal text & image |
+| **AWS Lambda** | Serverless Python 3.12 runtime running FastAPI via Mangum ASGI adapter |
+| **Amazon API Gateway** | HTTP API with `ANY /{proxy+}` route → Lambda integration |
+| **AWS Amplify** | Hosts the React + Vite frontend with CI/CD from GitHub |
 
 ---
 
-## 🚀 Quick Start & Local Setup
+## 🚀 Local Development
 
-### 1. Prerequisites
-- **Python**: 3.12+
-- **Node.js**: v18+ & npm
-- **AWS Credentials**: (Optional for local testing; configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`)
+### Prerequisites
+- Python 3.12+
+- Node.js v18+ & npm
+- AWS credentials configured (for Bedrock access)
 
-### 2. Backend Setup (FastAPI)
+### Backend
 
 ```bash
-# Navigate to backend directory
 cd backend
 
-# Create Python virtual environment
+# Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# On Windows PowerShell:
+# Activate (Windows PowerShell)
 .\venv\Scripts\Activate.ps1
-# On Linux/macOS:
+# Activate (macOS / Linux)
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# (Optional) Set environment variables in .env file or environment
-export BEDROCK_MODEL_ID=us.amazon.nova-lite-v1:0
-export AWS_REGION=us-east-1
+# Copy and fill in environment variables
+copy .env.example .env   # Windows
+cp .env.example .env     # macOS/Linux
 
-# Start local FastAPI server
-uvicorn app.main:app --reload --port 8000
+# Start local development server
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
-The backend server will run at `http://127.0.0.1:8000`. You can inspect interactive OpenAPI documentation at `http://127.0.0.1:8000/docs`.
+FastAPI runs at `http://127.0.0.1:8000`  
+Interactive docs at `http://127.0.0.1:8000/docs`
 
-### 3. Frontend Setup (React + Vite)
+### Frontend
 
 ```bash
-# Open a new terminal and navigate to frontend directory
 cd frontend
 
-# Install Node dependencies
+# Install dependencies
 npm install
+
+# Copy and fill in environment variables
+copy .env.example .env   # Windows
+cp .env.example .env     # macOS/Linux
+# Set VITE_API_URL=http://localhost:8000 for local dev
 
 # Start Vite development server
 npm run dev
 ```
 
-Open `http://localhost:3000` in your web browser.
+Frontend runs at `http://localhost:5173`
 
 ---
 
-## 📡 API Specification
+## ☁️ AWS Deployment
+
+### Step 1 — Deploy Backend to AWS Lambda
+
+#### 1a. Package the Lambda deployment zip
+
+```bash
+cd backend
+
+# Install dependencies into ./package/
+pip install --target ./package -r requirements.txt
+
+# Windows (PowerShell)
+Compress-Archive -Path .\package\* -DestinationPath lambda.zip
+Compress-Archive -Path .\app, .\lambda_function.py -Update -DestinationPath lambda.zip
+
+# macOS / Linux
+cd package && zip -r ../lambda.zip . && cd ..
+zip -g lambda.zip -r app lambda_function.py
+```
+
+#### 1b. Create the Lambda function
+
+1. Open **AWS Lambda Console** → **Create function**
+2. Runtime: **Python 3.12**
+3. Upload `lambda.zip` (or use S3 for large zips)
+4. **Handler**: `lambda_function.handler`
+5. **Memory**: 512 MB · **Timeout**: 30 seconds
+6. **IAM Role**: attach `AmazonBedrockFullAccess` policy
+
+#### 1c. Set Lambda environment variables
+
+| Variable | Value |
+|---|---|
+| `AWS_REGION` | `us-east-1` |
+| `BEDROCK_MODEL_ID` | `us.amazon.nova-lite-v1:0` |
+| `GROQ_API_KEY` | *(optional fallback)* |
+
+> ⚠️ Do **not** set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` on Lambda — use the IAM execution role instead.
+
+---
+
+### Step 2 — Create Amazon API Gateway HTTP API
+
+1. Open **Amazon API Gateway Console** → **Create API** → **HTTP API**
+2. Add integration: **Lambda** → select your `FilePilot-AI` function
+3. Add route: `ANY` → `/{proxy+}`
+4. Stage: `$default` (auto-deploy)
+5. Copy the **Invoke URL** (e.g. `https://abc123.execute-api.us-east-1.amazonaws.com`)
+
+---
+
+### Step 3 — Deploy Frontend to AWS Amplify
+
+1. Push your repo to GitHub
+2. Open **AWS Amplify Console** → **Create new app** → **Host web app**
+3. Connect GitHub → select `FilePilot-AI-AWS-Challenge` repo → branch `main`
+4. Amplify detects Vite automatically. Confirm build settings:
+
+```yaml
+version: 1
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd frontend
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: frontend/dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - frontend/node_modules/**/*
+```
+
+5. Add environment variable in Amplify:
+
+| Key | Value |
+|---|---|
+| `VITE_API_URL` | `https://abc123.execute-api.us-east-1.amazonaws.com` |
+
+6. Click **Save and deploy** → Amplify builds and publishes automatically
+
+---
+
+## 📡 API Reference
+
+### `GET /health`
+Health check — returns `{"status": "healthy"}`.
 
 ### `POST /api/v1/analyze`
 
-#### Request
-- **Content-Type**: `multipart/form-data`
-- **Body**: `files[]` (Array of files up to 10 MB each. Supported extensions: `.jpg`, `.jpeg`, `.png`, `.pdf`, `.txt`)
+**Request:** `multipart/form-data` with `files[]` field  
+**Supported types:** `.jpg`, `.jpeg`, `.png`, `.pdf`, `.txt`  
+**Max file size:** 10 MB · **Max files per request:** 10
 
-#### Response (`200 OK`)
+**Response:**
 ```json
 [
   {
     "original_name": "Screenshot (12).png",
     "suggested_name": "React_Login_Error.png",
+    "filename": "React_Login_Error.png",
     "category": "Development",
     "folder": "Projects/React",
-    "reason": "The screenshot shows a React application login runtime exception.",
-    "confidence": 0.95
-  },
-  {
-    "original_name": "scan.pdf",
-    "suggested_name": "Electricity_Bill_July_2026.pdf",
-    "category": "Bills",
-    "folder": "Documents/Bills",
-    "reason": "The document contains an electricity utility bill for July 2026.",
-    "confidence": 0.94
+    "suggested_folder": "Projects/React",
+    "tags": ["react", "error", "screenshot", "code"],
+    "summary": "The screenshot shows a React application login runtime exception.",
+    "confidence": 0.95,
+    "provider_used": "bedrock"
   }
 ]
 ```
 
-#### Error Handling (`400 Bad Request` / `500 Internal Server Error`)
-If AWS credentials or Amazon Bedrock model access is not configured:
-```json
-{
-  "detail": "Amazon Bedrock is not configured. AWS credentials missing. Please configure AWS credentials."
-}
+---
+
+## 🔒 Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `AWS_REGION` | ✅ | AWS region (use `us-east-1` for Nova models) |
+| `BEDROCK_MODEL_ID` | ✅ | Model ID (e.g. `us.amazon.nova-lite-v1:0`) |
+| `AWS_ACCESS_KEY_ID` | Local only | AWS credentials (use IAM role on Lambda) |
+| `AWS_SECRET_ACCESS_KEY` | Local only | AWS credentials (use IAM role on Lambda) |
+| `GROQ_API_KEY` | Optional | Fallback provider if Bedrock unavailable |
+| `VITE_API_URL` | Frontend | API Gateway invoke URL |
+
+> 🚫 **Never commit `.env` files.** They are in `.gitignore`.  
+> ✅ Use `.env.example` files as templates.
+
+---
+
+## 🛡️ Resilient AI Provider Chain
+
+If Amazon Bedrock is unavailable or rate-limited, the backend automatically falls back:
+
+```
+1. Amazon Bedrock (Amazon Nova Lite)  ← primary, 3s timeout
+       ↓ (if fails)
+2. Groq API (llama-3.3-70b)           ← secondary, if GROQ_API_KEY set
+       ↓ (if fails)
+3. Mock Fallback Engine               ← always works, rule-based
 ```
 
 ---
 
-## ☁️ AWS Deployment Instructions
-
-### Deploying Frontend to AWS Amplify
-1. Push your repository to GitHub.
-2. Open the **AWS Amplify Console**.
-3. Click **Create new app** -> **Host web app**.
-4. Select GitHub, authorize, and choose your repository & branch.
-5. Set `frontend` as the root build directory in `amplify.yml`:
-   ```yaml
-   version: 1
-   applications:
-     - frontend:
-         phases:
-           build:
-             commands:
-               - npm ci
-               - npm run build
-         artifacts:
-           baseDirectory: dist
-           files:
-             - '**/*'
-         cache:
-           paths:
-             - node_modules/**/*
-   ```
-6. Add environment variable `VITE_API_URL` pointing to your deployed Amazon API Gateway endpoint.
-7. Click **Save and Deploy**.
-
-### Deploying Backend to AWS Lambda & API Gateway
-1. Package the backend application:
-   ```bash
-   cd backend
-   pip install --target ./package -r requirements.txt
-   cd package && zip -r ../lambda.zip . && cd ..
-   zip -g lambda.zip -r app lambda_function.py
-   ```
-2. In the **AWS Lambda Console**:
-   - Create a new Python 3.12 function.
-   - Set handler to `lambda_function.handler`.
-   - Upload `lambda.zip`.
-   - Under IAM Roles, attach `AmazonBedrockFullAccess` policy.
-3. In **Amazon API Gateway Console**:
-   - Create an HTTP API.
-   - Set integration to your AWS Lambda function.
-   - Route `ANY /{proxy+}` to the Lambda integration.
-   - Deploy API and copy the API endpoint URL.
-
----
-
 ## 📜 License
-MIT License. Built for the AWS Builder Weekend Challenge.
+
+MIT License. Built for the **AWS Builder Weekend Challenge**.

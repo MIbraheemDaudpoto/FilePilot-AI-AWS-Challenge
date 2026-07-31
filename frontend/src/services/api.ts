@@ -1,6 +1,6 @@
 import { AnalysisResult } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '';
 
 export async function analyzeFilesApi(files: File[]): Promise<AnalysisResult[]> {
   const formData = new FormData();
@@ -28,7 +28,7 @@ export async function analyzeFilesApi(files: File[]): Promise<AnalysisResult[]> 
     const data: AnalysisResult[] = await response.json();
     return data;
   } catch (error: any) {
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+    if (error.name === 'TypeError' && error.message?.includes('fetch')) {
       throw new Error(
         'Unable to connect to FilePilot AI backend service. Please check your network connection.'
       );
