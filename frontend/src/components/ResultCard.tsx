@@ -1,114 +1,105 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Check, Copy, AlertCircle, ArrowRight, FolderOpen, Tag } from 'lucide-react';
 import { AnalysisResult } from '../types';
-import { Copy, Check, ArrowRight, Folder, Tag, Sparkles, Star } from 'lucide-react';
 
-interface ResultCardProps {
+interface Props {
   result: AnalysisResult;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Bills: 'bg-amber-950/80 text-amber-300 border-amber-800/50',
-  Receipts: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50',
-  Personal: 'bg-sky-950/80 text-sky-300 border-sky-800/50',
-  Photos: 'bg-purple-950/80 text-purple-300 border-purple-800/50',
-  Development: 'bg-indigo-950/80 text-indigo-300 border-indigo-800/50',
-  University: 'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-800/50',
-  Work: 'bg-blue-950/80 text-blue-300 border-blue-800/50',
-  Finance: 'bg-teal-950/80 text-teal-300 border-teal-800/50',
-  Medical: 'bg-rose-950/80 text-rose-300 border-rose-800/50',
-  Certificates: 'bg-yellow-950/80 text-yellow-300 border-yellow-800/50',
-  Travel: 'bg-orange-950/80 text-orange-300 border-orange-800/50',
-  Miscellaneous: 'bg-slate-800 text-slate-300 border-slate-700',
+  Bills:         'bg-orange-950/60 text-orange-300 border-orange-800/50',
+  Receipts:      'bg-amber-950/60  text-amber-300  border-amber-800/50',
+  Finance:       'bg-yellow-950/60 text-yellow-300 border-yellow-800/50',
+  Personal:      'bg-emerald-950/60 text-emerald-300 border-emerald-800/50',
+  Photos:        'bg-sky-950/60    text-sky-300    border-sky-800/50',
+  Development:   'bg-violet-950/60 text-violet-300 border-violet-800/50',
+  University:    'bg-indigo-950/60 text-indigo-300 border-indigo-800/50',
+  Work:          'bg-blue-950/60   text-blue-300   border-blue-800/50',
+  Medical:       'bg-red-950/60    text-red-300    border-red-800/50',
+  Travel:        'bg-teal-950/60   text-teal-300   border-teal-800/50',
+  Miscellaneous: 'bg-slate-800/60  text-slate-300  border-slate-700/50',
 };
 
-export const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
+function categoryClass(cat: string) {
+  return CATEGORY_COLORS[cat] ?? CATEGORY_COLORS['Miscellaneous'];
+}
+
+export function ResultCard({ result }: Props) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(result.suggested_name);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const categoryStyle =
-    CATEGORY_COLORS[result.category] || 'bg-slate-800 text-slate-300 border-slate-700';
-
-  const confidencePct = Math.round((result.confidence || 0.95) * 100);
-
-  return (
-    <div className="group p-6 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 shadow-xl transition-all duration-300 animate-fade-in relative overflow-hidden">
-      {/* Top subtle gradient highlight line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 opacity-60 group-hover:opacity-100 transition-opacity" />
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Filename Transformation Section */}
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-            <span className="truncate max-w-[200px] sm:max-w-[280px]" title={result.original_name}>
-              {result.original_name}
-            </span>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <span className="text-blue-400 font-semibold uppercase tracking-wider text-[10px]">Suggested</span>
-          </div>
-
-          <h4 className="text-lg md:text-xl font-bold text-white font-mono tracking-tight break-all flex items-center gap-2">
-            <span className="text-emerald-400">✨</span>
-            {result.suggested_name}
-          </h4>
-
-          <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-sans pt-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 inline mr-1.5" />
-            {result.reason}
-          </p>
-        </div>
-
-        {/* Copy Button Action */}
-        <div className="shrink-0 pt-2 md:pt-0">
-          <button
-            onClick={handleCopy}
-            className={`w-full md:w-auto px-4 py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
-              copied
-                ? 'bg-emerald-600 text-white shadow-emerald-600/30'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-95'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" />
-                <span>Copy Filename</span>
-              </>
-            )}
-          </button>
+  if (result.error) {
+    return (
+      <div className="rounded-2xl bg-rose-950/40 border border-rose-800/50 p-4 flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-rose-200">{result.original_name}</p>
+          <p className="text-xs text-rose-400 mt-0.5">{result.error}</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Badges Footer Bar */}
-      <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Category Badge */}
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border ${categoryStyle}`}>
-            <Tag className="w-3.5 h-3.5" />
-            {result.category}
-          </span>
+  function copyFilename() {
+    navigator.clipboard.writeText(result.suggested_name).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
-          {/* Folder Badge */}
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-200 border border-slate-700/80 font-mono">
-            <Folder className="w-3.5 h-3.5 text-blue-400" />
-            {result.folder}
-          </span>
+  return (
+    <div className="rounded-2xl bg-slate-900/60 border border-slate-800/80 overflow-hidden shadow-lg shadow-black/20 hover:border-slate-700/80 transition-colors">
+      {/* Top bar — filename transformation */}
+      <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-slate-800/60">
+        {/* Original */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">Original</p>
+          <p className="text-sm text-slate-400 truncate font-mono">{result.original_name}</p>
         </div>
 
-        {/* Confidence Badge */}
-        <div className="flex items-center gap-1.5 text-slate-400 text-xs font-medium">
-          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400/30" />
-          <span>{confidencePct}% AI Confidence</span>
+        <ArrowRight className="w-4 h-4 text-indigo-500 shrink-0 self-center hidden sm:block" />
+
+        {/* Suggested */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 mb-0.5">Suggested</p>
+          <p className="text-sm text-white font-semibold truncate font-mono">{result.suggested_name}</p>
         </div>
+
+        {/* Copy button */}
+        <button
+          onClick={copyFilename}
+          className={[
+            'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0',
+            copied
+              ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+              : 'bg-indigo-900/50 hover:bg-indigo-800/60 text-indigo-300 border border-indigo-700/50',
+          ].join(' ')}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'Copied!' : 'Copy Filename'}
+        </button>
+      </div>
+
+      {/* Bottom row — category + folder + reason */}
+      <div className="px-5 py-3.5 flex flex-wrap items-start gap-3">
+        {/* Category badge */}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${categoryClass(result.category)}`}>
+          <Tag className="w-3 h-3" />
+          {result.category}
+        </span>
+
+        {/* Folder badge */}
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800/70 text-slate-300 border border-slate-700/50">
+          <FolderOpen className="w-3 h-3 text-amber-400" />
+          {result.folder}
+        </span>
+
+        {/* Reason */}
+        {result.reason && (
+          <p className="w-full text-xs text-slate-400 leading-relaxed mt-0.5">
+            {result.reason}
+          </p>
+        )}
       </div>
     </div>
   );
-};
+}
